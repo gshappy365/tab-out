@@ -26,9 +26,9 @@
       }
     }
 
-    async function focus(dashboard) {
-      await api.tabs.update(dashboard.id, { active: true });
-      await api.windows.update(dashboard.windowId, { focused: true });
+    async function focus(tab) {
+      const active = await api.tabs.update(tab.id, { active: true });
+      await api.windows.update(active.windowId, { focused: true });
     }
 
     async function join(dashboardId, targetId, dashboardLeft) {
@@ -45,7 +45,7 @@
       const { dashboard, partner, session } = context;
       const target = await api.tabs.get(targetId);
       if (target.id === partner.id) {
-        await focus(dashboard);
+        await focus(target);
         if (returning) await store(dashboard.id, null);
         return { handled: true, originalTabId: returning ? null : session?.originalTabId ?? null };
       }
@@ -72,7 +72,7 @@
         await api.tabs.unsplit(dashboard.splitViewId);
         if (hasSplit(target)) await api.tabs.unsplit(target.splitViewId);
         const splitViewId = await join(dashboard.id, target.id, dashboardLeft);
-        await focus(dashboard);
+        await focus(target);
         await store(dashboard.id, returning ? null : {
           splitViewId, windowId: dashboard.windowId, partnerTabId: target.id,
           originalTabId: session?.originalTabId ?? partner.id,

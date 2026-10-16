@@ -11,7 +11,7 @@ test('Chrome 原生分屏：真实标签替换、状态保留和返回', async t
   const extension = path.resolve(__dirname, '../extension');
   const server = http.createServer((request, response) => {
     response.setHeader('Content-Type', 'text/html; charset=utf-8');
-    response.end(`<title>真实标签 ${request.url}</title><input id="draft"><div style="height:5000px">分屏测试</div>`);
+    response.end(`<title>真实标签 ${request.url}</title><input id="first" aria-label="第一个输入框"><textarea id="draft" aria-label="原输入框"></textarea><div style="height:5000px">分屏测试</div>`);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -60,17 +60,39 @@ test('Chrome 原生分屏：真实标签替换、状态保留和返回', async t
     };
 
     await t.test('普通总览分屏自动展示独立实例，鼠标替换保留内存、表单、滚动', async () => {
-      await b.evaluate(() => { window.unsaved = { text: '内存状态' }; document.querySelector('#draft').value = '未提交草稿'; window.scrollTo(0, 1300); });
+      await original.locator('#draft').fill('起始草稿');
+      await original.locator('#draft').evaluate(el => el.setSelectionRange(2, 2));
+      await b.locator('#draft').fill('未提交草稿');
+      await b.locator('#draft').evaluate(el => el.setSelectionRange(1, 1));
+      await b.evaluate(() => { window.unsaved = { text: '内存状态' }; window.scrollTo(0, 1300); });
       await activate(ids.b); await waitPair(ids.b);
       assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.a)).splitViewId, -1);
       assert.equal(await b.locator('#draft').inputValue(), '未提交草稿');
       assert.equal(await b.evaluate(() => window.unsaved.text), '内存状态');
       assert.equal(await b.evaluate(() => window.scrollY), 1300);
-      assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.d)).active, true);
+      assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.b)).active, true);
+      assert.equal(await b.evaluate(() => document.activeElement.id), 'draft');
+      await b.keyboard.insertText('续写');
+      assert.equal(await b.locator('#draft').inputValue(), '未续写提交草稿');
+      assert.equal(await b.locator('#first').inputValue(), '');
       assert.equal(await dashboard.locator('body.split-mode.remote-mode').count(), 1);
       if (process.env.TAB_OUT_SPLIT_SCREENSHOT_PATH) {
         await dashboard.screenshot({ path: process.env.TAB_OUT_SPLIT_SCREENSHOT_PATH, fullPage: true });
       }
+    });
+
+    await t.test('重复选择当前浏览标签恢复原选区，无输入焦点时不自动挑选首框', async () => {
+      await b.locator('#draft').evaluate(el => el.setSelectionRange(1, 3));
+      await command('show-dashboard');
+      await activate(ids.b); await waitPair(ids.b);
+      await b.keyboard.insertText('选区');
+      assert.equal(await b.locator('#draft').inputValue(), '未选区提交草稿');
+      await b.locator('#draft').fill('未续写提交草稿');
+      await activate(ids.c); await waitPair(ids.c);
+      assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.c)).active, true);
+      assert.equal(await c.evaluate(() => document.activeElement.tagName), 'BODY');
+      assert.equal(await c.locator('#first').inputValue(), '');
+      await activate(ids.b); await waitPair(ids.b);
     });
 
     await t.test('浏览侧活动时方向仍控制总览，菜单保留起点，返回还原 A', async () => {
@@ -82,13 +104,18 @@ test('Chrome 原生分屏：真实标签替换、状态保留和返回', async t
       await b.locator('#draft').focus();
       await b.keyboard.press('Alt+Shift+E');
       await waitPair(selected);
-      assert.equal(await b.locator('#draft').inputValue(), '未提交草稿');
+      assert.equal(await b.locator('#draft').inputValue(), '未续写提交草稿');
       await activate(ids.c); await waitPair(ids.c);
       await command('show-dashboard');
       const state = await dashboard.evaluate(async () => (await chrome.runtime.sendMessage({ type: 'remote:get-state' })).state);
       assert.equal(state.originalTabId, ids.a);
+      assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.d)).active, true);
       await command('cancel-selection'); await waitPair(ids.a);
       assert.equal(await pair(ids.a), true);
+      assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.a)).active, true);
+      assert.equal(await original.evaluate(() => document.activeElement.id), 'draft');
+      await original.keyboard.insertText('返回');
+      assert.equal(await original.locator('#draft').inputValue(), '起始返回草稿');
       assert.equal((await worker.evaluate(id => chrome.tabs.get(id), ids.b)).splitViewId, -1);
     });
 
@@ -105,6 +132,8 @@ test('Chrome 原生分屏：真实标签替换、状态保留和返回', async t
       const target = await worker.evaluate(id => chrome.tabs.get(id), other.b);
       const partner = await worker.evaluate(id => chrome.tabs.get(id), other.c);
       assert.equal(target.windowId, ids.windowId);
+      assert.equal(target.active, true);
+      assert.equal((await worker.evaluate(() => chrome.windows.getLastFocused())).id, ids.windowId);
       assert.equal(partner.windowId, other.windowId);
       assert.equal(partner.splitViewId, -1);
       await command('cancel-selection'); await waitPair(ids.a);

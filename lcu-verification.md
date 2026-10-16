@@ -1,5 +1,7 @@
 # Tab Out Remote：LCU 本机验收
 
+> 本记录为原 1.2.0 历史；后续输入焦点需求已完成独立验收，见 [输入焦点实现与验收](docs/features/split-input-focus-verification.md)。
+
 日期：2026-10-16。状态：本机核心分屏交互验收通过；实体遥控器未验收。
 
 ## 已实际核验

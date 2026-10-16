@@ -92,7 +92,7 @@
           applyState(message.state);
           await showBindings();
           await render();
-          if (state.split) root.focus();
+          if (state.split && message.focusDashboard !== false) root.focus();
         } else if (message.type === 'remote:action' && state.enabled) {
           await move(message.command);
         } else if (message.type === 'remote:error') {

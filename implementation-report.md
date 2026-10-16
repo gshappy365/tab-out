@@ -1,5 +1,7 @@
 # Tab Out Remote 1.2.0：分屏选择实现与验证
 
+> 后续本地输入焦点改动与新的 36 项测试、LCU 真键入证据见 [分屏输入焦点验收](docs/features/split-input-focus-verification.md)。本文中的旧焦点结论属于原 1.2.0 验收历史。
+
 日期：2026-10-16。设计已由用户确认。
 
 ## 交付结果

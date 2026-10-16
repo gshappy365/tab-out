@@ -17,8 +17,9 @@ test('已有分屏：点击准确标签替换浏览侧，总览保留且原标�
   assert.equal(d.splitViewId, b.splitViewId);
   assert.ok(d.splitViewId >= 0);
   assert.equal(a.splitViewId, -1);
-  assert.equal(f.active(1), 10);
+  assert.equal(f.active(1), 12);
   assert.equal(b.url, target.url);
+  assert.equal(f.messages.at(-1).focusDashboard, false);
   assert.equal(f.messages.some(message => message.type === 'remote:end'), false);
 });
 
@@ -49,6 +50,8 @@ test('跨窗口取出另一个分屏中的真实标签，原伙伴保留', async
   assert.equal(b.splitViewId, d.splitViewId);
   assert.equal(c.windowId, 2);
   assert.equal(c.splitViewId, -1);
+  assert.equal(f.active(1), 12);
+  assert.equal((await f.api.windows.getLastFocused()).id, 1);
 });
 
 test('总览原在右侧，替换后仍在右侧；目标原在总览之前也保持顺序', async () => {
@@ -70,7 +73,7 @@ test('浏览侧有焦点时遥控方向仍发送给总览，确定不会切走�
   await controller.handleMessage({ type: 'remote:selection', selectedTabId: 12 }, sender);
   await controller.handleCommand('confirm-selection', original);
   assert.equal((await f.api.tabs.get(12)).splitViewId, (await f.api.tabs.get(10)).splitViewId);
-  assert.equal(f.active(1), 10);
+  assert.equal(f.active(1), 12);
 });
 
 test('固定、标签组、隐私上下文不兼容时提示且没有结构变更', async () => {
@@ -90,6 +93,7 @@ test('手动更换伙伴后放弃旧返回记录，新的选择使用新起点',
   await f.api.tabs.unsplit((await f.api.tabs.get(10)).splitViewId);
   await f.api.tabs.move(13, { index: 1 });
   await f.api.tabs.createSplit([10, 13]);
+  await f.api.tabs.update(10, { active: true });
   await controller.handleCommand('cancel-selection');
   assert.match(f.messages.at(-1).text, /尚未更换/);
   await controller.handleMessage({ type: 'remote:activate', tabId: 12 }, sender);
@@ -130,4 +134,24 @@ test('重组失败时恢复旧组合，连续点击串行完成，不丢失标�
   assert.equal(f.allTabs().length, 4);
   await controller.handleCommand('cancel-selection');
   assert.equal((await f.api.tabs.get(10)).splitViewId, (await f.api.tabs.get(11)).splitViewId);
+});
+
+
+test('重复选择浏览侧仍交给目标，菜单回总览，返回交给起始标签', async () => {
+  const f = createChromeFixture([dashboard, original, target]);
+  const controller = createRemoteController(f.api);
+  const choose = id => controller.handleMessage({ type: 'remote:activate', tabId: id }, sender);
+  await choose(12);
+  await controller.handleCommand('show-dashboard');
+  assert.equal(f.active(1), 10);
+  assert.notEqual(f.messages.at(-1).focusDashboard, false);
+  await choose(12);
+  assert.equal(f.active(1), 12);
+  assert.equal(f.messages.at(-1).focusDashboard, false);
+  await controller.handleCommand('navigate-left', await f.api.tabs.get(12));
+  assert.equal(f.active(1), 12);
+  assert.equal(f.messages.at(-1).type, 'remote:action');
+  await controller.handleCommand('cancel-selection');
+  assert.equal(f.active(1), 11);
+  assert.equal(f.messages.at(-1).focusDashboard, false);
 });

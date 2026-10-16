@@ -4,7 +4,9 @@
   "version": "1.2.0",
   "minimum_chrome_version": "105",
   "description": "用遥控器切换 Chrome 标签，按网站分组选择具体标签。基于 Tab Out。",
-  "permissions": ["tabs", "activeTab", "storage"],
+  "permissions": ["tabs", "activeTab", "storage", "scripting"],
+  "optional_host_permissions": ["https://muse.ai/*"],
+  "options_ui": { "page": "options.html", "open_in_tab": true },
   "chrome_url_overrides": { "newtab": "index.html" },
   "background": { "service_worker": "background.js" },
   "commands": {

@@ -1,5 +1,7 @@
 # Tab Out Remote：Chrome 与 SayAll 配置
 
+> 当前本地输入焦点改动：已有分屏中，点击/确定与成功返回后焦点交给浏览侧，恢复此前正在使用的输入框；没有原输入框时不自动挑选。菜单回总览，遥控方向命令仍控制总览。等切换完成后可直接输入，无需再次点击。详见 [验收记录](docs/features/split-input-focus-verification.md)。
+
 本地遥控版基于 Tab Out。扩展运行不需要 Node、服务器或依赖安装。首次使用先在 Chrome 绑定快捷键，再用小米蓝牙遥控器 2 / 2 Pro 实机验收。
 
 ## 1.2.0：在分屏另一侧显示真实标签
@@ -96,3 +98,14 @@ node --test tests/browser-split-navigation.test.cjs
 外部包目录可用 `TAB_OUT_PLAYWRIGHT_PATH` 指定。浏览器测试使用隔离配置目录并在结束后删除，日常 Chrome 配置不参与测试。
 
 分屏测试要求 Chrome 155+，可用 `TAB_OUT_CHROME_PATH` 指定 Chrome for Testing 可执行文件。默认 Playwright Chromium 可能版本较旧；测试遇到不支持的版本会失败并提示，不将跳过视为分屏验收通过。设置 `TAB_OUT_HEADFUL=1` 可运行有界面分屏测试。
+
+## Muse 消息框专项适配（当前本地构建）
+
+Muse 失去原输入框焦点后，浏览器自身不一定能恢复消息框。当前本地构建增加可选的 Muse 自动聚焦：
+
+1. 在总览顶部打开“输入焦点设置”。
+2. 点击“为 Muse 开启自动聚焦”，在 Chrome 提示中允许 muse.ai。
+3. 已有分屏中，从总览点击 Muse、按确定或成功返回 Muse，消息框会自动获得焦点；待切换完成后直接输入即可。
+4. 关闭时回到设置页点击“关闭 Muse 自动聚焦并撤销授权”。
+
+仅申请 https://muse.ai/* 的可选访问范围，并新增 scripting 能力；其他网站继续沿用原行为。没有发送消息、读取输入内容或常驻网页脚本。本机已开启。详情见 [Muse 验收](docs/features/muse-input-focus-verification.md)。

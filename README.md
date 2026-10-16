@@ -1,5 +1,7 @@
 # Tab Out
 
+> 当前本地开发改动另含 [Muse 专项自动聚焦与可选授权](docs/features/muse-input-focus-verification.md)。通用分屏输入焦点恢复：选择及成功返回后可在浏览侧原输入框续写，菜单回总览。详见 [设计](docs/features/split-input-focus.md)与[验收记录](docs/features/split-input-focus-verification.md)。
+
 **Keep tabs on your tabs.**
 
 ## 本地遥控版：Tab Out Remote

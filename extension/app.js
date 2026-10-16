@@ -1232,6 +1232,10 @@ document.addEventListener('click', async (e) => {
 
   const action = actionEl.dataset.action;
 
+  if (action === 'open-focus-settings') {
+    await chrome.runtime.openOptionsPage();
+    return;
+  }
   if (action === 'open-remote-shortcuts') {
     await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
     return;

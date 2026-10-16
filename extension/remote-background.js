@@ -2,6 +2,7 @@
   'use strict';
 
   function createRemoteController(api) {
+    const muse = (root.TabOutMuseFocus || require('./muse-focus.js')).createMuseFocus(api);
     const split = (root.TabOutSplit || require('./split-navigation.js')).createSplitNavigator(api);
     const dashboardUrl = api.runtime.getURL('index.html');
     const commands = new Set([
@@ -146,7 +147,8 @@
         const result = await split.select(state.dashboardTabId, target.id);
         if (result.handled) {
           const next = await dashboardState(await api.tabs.get(state.dashboardTabId));
-          return sendToDashboard(next, 'remote:show', { state: next });
+          await sendToDashboard(next, 'remote:show', { state: next, focusDashboard: false });
+          return restoreMuseInput(next, target.id);
         }
         await api.tabs.update(target.id, { active: true });
         await api.windows.update(target.windowId, { focused: true });
@@ -159,6 +161,13 @@
       try {
         await api.runtime.sendMessage({ type: 'remote:end', targetTabId: state.dashboardTabId });
       } catch { /* The target was activated even if its old dashboard closed. */ }
+    }
+
+    async function restoreMuseInput(state, tabId) {
+      const result = await muse.restore(tabId);
+      if (['missing', 'ambiguous', 'unavailable'].includes(result.status)) {
+        await sendToDashboard(state, 'remote:error', { text: '已切换到 Muse，但无法定位唯一可编辑的消息框，请手动点击输入框。' });
+      }
     }
 
     async function processCommand(command, triggeringTab) {
@@ -186,7 +195,10 @@
             const result = await split.cancel(dashboard.id);
             if (result.handled) {
               const next = await dashboardState(await api.tabs.get(dashboard.id));
-              return sendToDashboard(next, 'remote:show', { state: next });
+              await sendToDashboard(next, 'remote:show', { state: next, focusDashboard: false });
+              const context = await split.inspect(dashboard.id);
+              if (context) await restoreMuseInput(next, context.partner.id);
+              return;
             }
           } catch (error) {
             return sendToDashboard(state, 'remote:error', { text: error.message });

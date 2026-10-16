@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>Tab Out Remote · 输入焦点设置</title>
+<style>
+body { max-width: 680px; margin: 60px auto; padding: 24px; font: 17px/1.7 system-ui; color: #243a2a; background: #faf9f5; }
+button { padding: 10px 18px; margin-right: 12px; font: inherit; cursor: pointer; }
+small { display: block; margin-top: 20px; }
+</style>
+<h1>输入焦点设置</h1>
+<h2>Muse 消息框自动聚焦</h2>
+<p>从分屏总览选择或返回 Muse 时，自动聚焦消息输入框。保留已有草稿和选区，不写入或发送消息。</p>
+<p>只申请 <strong>https://muse.ai/*</strong> 的可选访问权限。你可以随时关闭。</p>
+<p id="status" role="status" aria-live="polite">正在检查授权…</p>
+<button id="enable">为 Muse 开启自动聚焦</button>
+<button id="disable" hidden>关闭 Muse 自动聚焦并撤销授权</button>
+<small>其他网站沿用浏览器自身保留的输入焦点；此设置不改变遥控器按键绑定。</small>
+<script src="options.js"></script>
+</html>
