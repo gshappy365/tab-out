@@ -18,7 +18,7 @@ test('真实扩展：标签展示、导航、确定、返回与快捷键', async
   let context;
   try {
     context = await chromium.launchPersistentContext(profile, {
-      channel: 'chromium', headless: true,
+      ...(process.env.TAB_OUT_CHROME_PATH ? { executablePath: process.env.TAB_OUT_CHROME_PATH } : { channel: 'chromium' }), headless: true,
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
       viewport: { width: 1280, height: 900 },
       timezoneId: 'Asia/Shanghai',

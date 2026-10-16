@@ -8,6 +8,8 @@
 
 安装、快捷键与实机验收见 [REMOTE_SETUP.md](REMOTE_SETUP.md)。原版网站分组和鼠标模式保留；遥控模式展开所有标签并独立展示重复网址实例。来源与许可见 [UPSTREAM.md](UPSTREAM.md)。
 
+1.2.0 增加 Chrome 原生分屏选择：总览已处于分屏时，点击或确定会把真实目标标签放到另一侧，总览保持原侧；返回恢复本次首次选择前的浏览侧。支持跨窗口移动、解除目标已有分屏，以及固定状态和标签组冲突保护。分屏重组需要 Chrome 155+，未分屏时保持原有行为。
+
 Tab Out is a Chrome extension that replaces your new tab page with a dashboard of everything you have open. Tabs are grouped by domain, with homepages (Gmail, X, LinkedIn, etc.) pulled into their own group. Close tabs with a satisfying swoosh + confetti.
 
 No server. No account. No external API calls. Just a Chrome extension.

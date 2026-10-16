@@ -1,4 +1,4 @@
-importScripts('remote-background.js');
+importScripts('split-navigation.js', 'remote-background.js');
 
 const remoteController = TabOutRemoteBackground.createRemoteController(chrome);
 
@@ -9,7 +9,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!['remote:get-state', 'remote:selection', 'remote:execute'].includes(message?.type)) return false;
+  if (!['remote:get-state', 'remote:selection', 'remote:execute', 'remote:activate'].includes(message?.type)) return false;
   remoteController.handleMessage(message, sender).then(sendResponse).catch(error => {
     sendResponse({ ok: false, error: error.message });
   });

@@ -94,3 +94,17 @@ Once the extension is loaded:
 - Saved tabs are stored in `chrome.storage.local` (persists across sessions).
 - 100% local. No data is sent to any external service.
 - To update: `cd tab-out && git pull`, then reload the extension in `chrome://extensions`.
+
+## Agent skills
+
+### Issue tracker
+
+Track issues and specs in GitHub Issues for `gshappy365/tab-out`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five default triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use single-context documentation: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.

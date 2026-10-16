@@ -2,36 +2,38 @@
 
 本地遥控版基于 Tab Out。扩展运行不需要 Node、服务器或依赖安装。首次使用先在 Chrome 绑定快捷键，再用小米蓝牙遥控器 2 / 2 Pro 实机验收。
 
-## 本机当前状态（2026-10-13）
+## 1.2.0：在分屏另一侧显示真实标签
 
-日常 Chrome 已加载并启用 1.1.0，七个命令均已保存，总览可通过菜单组合呼出。此电脑的实际绑定如下；配置 SayAll 时优先使用本表。下文的默认建议表用于新安装。
+需要 Chrome 155+。先用 Chrome 自带的分屏功能，把 Tab Out Remote 和任意一个网页放在同一窗口的两侧。扩展只在已有分屏时启用本功能，不自动创建初始分屏。
 
-| 遥控器按键 | 本机实际快捷键 |
-|---|---|
-| 菜单 | ⌘⇧Y |
-| 左 | ⌃⇧L |
-| 右 | ⌃⇧R |
-| 上 | ⌥⇧U |
-| 下 | ⌃⇧D |
-| 确定 | ⌥⇧E |
-| 返回 | ⌥⇧B |
+- 总览出现“分屏选择”提示后，点击 **Open tabs 已打开标签列表**中的条目，或用方向键选中再按确定。已有真实标签会移动到浏览侧，不复制网址；总览保留在原来的一侧。
+- 同网址的多个标签独立列出。其他窗口的目标允许移入；如果它已和另一标签分屏，会先解除原配对。原伙伴和被替换标签均保留。移动窗口最后一个标签可能使空窗口自动关闭。
+- 总览在分屏里时，即便点击浏览侧取得焦点，遥控方向与确定仍按分屏关系控制总览。非分屏时保留原有左右快速切换行为。
+- 第一次更换浏览侧时记录起始标签。连续选择和重复菜单不覆盖起点；返回恢复起始标签，成功后重新开始下一轮。
+- 固定状态或 Chrome 标签组不兼容时提示并保留现状。手动退出或更换分屏伙伴会结束旧会话。
 
-⌃ 是 Control。左右默认建议未注册，向下组合未录入成功，已改用上述 Control 组合。
+隔离 Chrome 155 的有界面和无界面测试已验证上述主要行为。2026-10-16，日常 Chrome 155.0.8059.82 也已通过 LCU 的点击、方向/确定、返回、表单保留与总览原生输入焦点交互验证。实体遥控器仍待验收；重建后的宽度比例不保证保留。
 
-SayAll 的菜单单击已配置为打开 Google Chrome，再发送 ⌘⇧Y。小米蓝牙遥控器 2 Pro 已连接。当前安装版本的界面没有按 App 自动方案入口，所以其余六个 Chrome 专用映射仍待配置，实体遥控器和 SayAll 发送链路也待验收。
+## 从 1.1.0 升级
+
+保留原已加载的扩展目录和 `config.local.js`。将新包 `extension` 中的其余文件复制到原目录，新增的 `split-navigation.js` 也要复制；然后在 `chrome://extensions` 点击 **Tab Out Remote 的重新加载**，并刷新已打开的总览。确认版本为 **1.2.0**。沿用同一目录可以保留扩展身份、已设置快捷键和保存的数据。
+
+2026-10-16，日常 Chrome 原加载目录已更新并重新加载为 1.2.0。经用户授权重新启动后，运行版本为 155.0.8059.82，本机核心分屏交互已由 LCU 验收。若重新从新目录“加载已解压的扩展”，Chrome 会视为独立扩展，需要重新核对七个快捷键。
+
+2026-10-13 已核验过的本机绑定为：菜单 ⌘⇧Y、左 ⌃⇧L、右 ⌃⇧R、上 ⌥⇧U、下 ⌃⇧D、确定 ⌥⇧E、返回 ⌥⇧B。⌃ 是 Control。本次没有重新读取日常 Chrome 设置；升级时保持 Chrome 与 SayAll 两边一致。SayAll 按 App 方案模块缺失的问题也尚未解决。
 
 ## 加载扩展
 
-1. 解压交付包，保留整个 `tab-out-remote` 文件夹。
+1. 解压交付包，保留整个 `tab-out-remote-1.2.0` 文件夹。
 2. 在 Google Chrome 地址栏输入 `chrome://extensions`。
 3. 开启“开发者模式”，点击“加载已解压的扩展程序”。
 4. 选择包内的 **`extension` 子文件夹**，不要选择整个包或 ZIP。
-5. 确认扩展名称为 **Tab Out Remote 1.1.0**，打开新标签页查看界面。
+5. 确认扩展名称为 **Tab Out Remote 1.2.0**，打开新标签页查看界面。
 
 直接使用工作区文件时，选择：
 
 ```text
-/Users/gaoshan/Documents/Codex/2026-10-13/shi-y/outputs/tab-out-remote/extension
+/Users/gaoshan/Documents/Codex/2026-10-13/shi-y/outputs/tab-out-remote-1.2.0/extension
 ```
 
 独立文件夹加载不会自动迁移原版 Tab Out 的 Saved for later 数据，原版数据仍由原扩展管理。原版和遥控版都覆盖新标签页，请在 Chrome 中确认当前显示的是遥控版。
@@ -86,7 +88,11 @@ SayAll 的菜单单击已配置为打开 Google Chrome，再发送 ⌘⇧Y。小
 
 ```sh
 node --test tests/remote-commands.test.cjs tests/spatial-navigation.test.cjs
+node --test tests/split-navigation.test.cjs
 node --test tests/browser-navigation.test.cjs
+node --test tests/browser-split-navigation.test.cjs
 ```
 
 外部包目录可用 `TAB_OUT_PLAYWRIGHT_PATH` 指定。浏览器测试使用隔离配置目录并在结束后删除，日常 Chrome 配置不参与测试。
+
+分屏测试要求 Chrome 155+，可用 `TAB_OUT_CHROME_PATH` 指定 Chrome for Testing 可执行文件。默认 Playwright Chromium 可能版本较旧；测试遇到不支持的版本会失败并提示，不将跳过视为分屏验收通过。设置 `TAB_OUT_HEADFUL=1` 可运行有界面分屏测试。

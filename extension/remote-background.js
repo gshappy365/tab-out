@@ -2,12 +2,14 @@
   'use strict';
 
   function createRemoteController(api) {
+    const split = (root.TabOutSplit || require('./split-navigation.js')).createSplitNavigator(api);
     const dashboardUrl = api.runtime.getURL('index.html');
     const commands = new Set([
       'show-dashboard', 'navigate-left', 'navigate-right', 'navigate-up',
       'navigate-down', 'confirm-selection', 'cancel-selection',
     ]);
     let commandQueue = Promise.resolve();
+    let showingDashboard = false;
 
     function isDashboard(tab) {
       const url = tab?.url || tab?.pendingUrl || '';
@@ -23,6 +25,27 @@
 
     async function saveState(windowId, state) {
       await api.storage.session.set({ [stateKey(windowId)]: state });
+    }
+
+    async function dashboardState(tab) {
+      const context = await split.inspect(tab.id);
+      const stored = await getState(tab.windowId);
+      const previous = stored?.dashboardTabId === tab.id ? stored : null;
+      if (!context) {
+        if (!previous) return null;
+        const state = { ...previous, split: false, originalTabId: null };
+        if (previous.split) Object.assign(state, { enabled: false, sourceTabId: null, selectedTabId: null });
+        await saveState(tab.windowId, state);
+        return state;
+      }
+      const state = {
+        ...previous, enabled: true, windowId: tab.windowId, dashboardTabId: tab.id,
+        sourceTabId: previous?.sourceTabId ?? context.partner.id,
+        selectedTabId: previous?.dashboardTabId === tab.id ? previous.selectedTabId : context.partner.id,
+        split: true, originalTabId: context.session?.originalTabId ?? null,
+      };
+      await saveState(tab.windowId, state);
+      return state;
     }
 
     async function sendToDashboard(state, type, extra = {}) {
@@ -42,6 +65,13 @@
 
     async function showDashboard(windowId, tabs) {
       const active = tabs.find(tab => tab.active);
+      const pairedDashboard = active && Number.isInteger(active.splitViewId) && active.splitViewId >= 0 &&
+        tabs.find(tab => tab.splitViewId === active.splitViewId && isDashboard(tab));
+      if (pairedDashboard) {
+        const state = await dashboardState(pairedDashboard);
+        await api.tabs.update(pairedDashboard.id, { active: true });
+        return sendToDashboard(state, 'remote:show', { state });
+      }
       const previous = await getState(windowId);
       let dashboard = isDashboard(active) ? active : tabs.find(tab =>
         tab.id === previous?.dashboardTabId && isDashboard(tab));
@@ -67,7 +97,20 @@
           (sender.url || sender.tab.url || '').split(/[?#]/)[0] !== dashboardUrl) return;
       const state = await getState(sender.tab.windowId);
       if (message.type === 'remote:get-state') {
-        return { ok: true, state: state?.dashboardTabId === sender.tab.id ? state : null };
+        const read = async () => ({ ok: true, state: await dashboardState(await api.tabs.get(sender.tab.id)) });
+        // A newly created page must finish initialization before it can acknowledge remote:show.
+        return showingDashboard ? read() : enqueue(read);
+      }
+      if (message.type === 'remote:activate' && Number.isInteger(message.tabId)) {
+        return enqueue(async () => {
+          const tab = await api.tabs.get(sender.tab.id);
+          const current = await dashboardState(tab);
+          if (!current?.enabled) return { ok: false, error: '请先按菜单进入标签总览。' };
+          current.selectedTabId = message.tabId;
+          await saveState(current.windowId, current);
+          await finishSelection(current, message.tabId, '选中标签已关闭，请重新选择。');
+          return { ok: true };
+        });
       }
       if (message.type === 'remote:selection') {
         if (!state?.enabled || state.dashboardTabId !== sender.tab.id ||
@@ -100,10 +143,15 @@
         return;
       }
       try {
+        const result = await split.select(state.dashboardTabId, target.id);
+        if (result.handled) {
+          const next = await dashboardState(await api.tabs.get(state.dashboardTabId));
+          return sendToDashboard(next, 'remote:show', { state: next });
+        }
         await api.tabs.update(target.id, { active: true });
         await api.windows.update(target.windowId, { focused: true });
-      } catch {
-        await sendToDashboard(state, 'remote:error', { text: '目标标签或窗口已变化，请重新选择。' });
+      } catch (error) {
+        await sendToDashboard(state, 'remote:error', { text: error.message || '目标标签或窗口已变化，请重新选择。' });
         return;
       }
       state.enabled = false;
@@ -117,16 +165,32 @@
       if (!commands.has(command)) return;
       const windowId = triggeringTab?.windowId ?? (await api.windows.getLastFocused()).id;
       const tabs = await api.tabs.query({ windowId });
-      if (command === 'show-dashboard') return showDashboard(windowId, tabs);
-      const active = tabs.find(tab => tab.active);
+      if (command === 'show-dashboard') {
+        showingDashboard = true;
+        try { return await showDashboard(windowId, tabs); }
+        finally { showingDashboard = false; }
+      }
+      const active = tabs.find(tab => tab.id === triggeringTab?.id && tab.active) || tabs.find(tab => tab.active);
       if (!active) return;
-      if (isDashboard(active)) {
-        const state = await getState(windowId);
-        if (!state?.enabled || state.dashboardTabId !== active.id) return;
+      const pairedDashboard = Number.isInteger(active.splitViewId) && active.splitViewId >= 0 &&
+        tabs.find(tab => tab.splitViewId === active.splitViewId && isDashboard(tab));
+      if (isDashboard(active) || pairedDashboard) {
+        const dashboard = pairedDashboard || active;
+        const state = await dashboardState(dashboard);
+        if (!state?.enabled || state.dashboardTabId !== dashboard.id) return;
         if (command === 'confirm-selection') {
           return finishSelection(state, state.selectedTabId, '选中标签已关闭，请重新选择。');
         }
         if (command === 'cancel-selection') {
+          try {
+            const result = await split.cancel(dashboard.id);
+            if (result.handled) {
+              const next = await dashboardState(await api.tabs.get(dashboard.id));
+              return sendToDashboard(next, 'remote:show', { state: next });
+            }
+          } catch (error) {
+            return sendToDashboard(state, 'remote:error', { text: error.message });
+          }
           return finishSelection(state, state.sourceTabId, '来源标签已关闭，请在总览中选择其他标签。');
         }
         return sendToDashboard(state, 'remote:action', { command });
@@ -140,10 +204,14 @@
       await api.tabs.update(target.id, { active: true });
     }
 
-    function handleCommand(command, triggeringTab) {
-      const result = commandQueue.then(() => processCommand(command, triggeringTab));
+    function enqueue(task) {
+      const result = commandQueue.then(task);
       commandQueue = result.catch(() => {});
       return result;
+    }
+
+    function handleCommand(command, triggeringTab) {
+      return enqueue(() => processCommand(command, triggeringTab));
     }
 
     return { handleCommand, handleMessage };

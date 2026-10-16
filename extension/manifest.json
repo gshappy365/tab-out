@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Out Remote",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minimum_chrome_version": "105",
   "description": "用遥控器切换 Chrome 标签，按网站分组选择具体标签。基于 Tab Out。",
   "permissions": ["tabs", "activeTab", "storage"],

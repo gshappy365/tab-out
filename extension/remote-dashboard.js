@@ -7,14 +7,18 @@
     let ownTab;
     let ready = Promise.resolve();
     let refreshTimer;
+    let lastError = '';
     const identity = api.tabs.getCurrent().then(tab => { ownTab = tab; return tab; });
     const targets = () => Array.from(document.querySelectorAll('.remote-target'));
 
     function applyState(next) {
       state = next ? { ...next } : { enabled: false, selectedTabId: null };
       document.body.classList.toggle('remote-mode', !!state.enabled);
+      document.body.classList.toggle('split-mode', !!state.split);
       document.getElementById('remoteHelp').hidden = !state.enabled;
-      document.getElementById('remoteStatus').textContent = '方向键选择 · 确定进入 · 返回原标签';
+      document.getElementById('remoteStatus').textContent = lastError || (state.split
+        ? '分屏选择 · 确定更换浏览侧 · 返回恢复起始标签'
+        : '方向键选择 · 确定进入 · 返回原标签');
     }
 
     async function choose(tabId, scroll = true) {
@@ -69,8 +73,10 @@
     }
 
     async function activate(tabId) {
+      await ready;
       await choose(tabId, false);
-      await execute('confirm-selection');
+      const response = await api.runtime.sendMessage({ type: 'remote:activate', tabId });
+      if (response?.error) notify(response.error);
     }
 
     api.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -82,12 +88,15 @@
         if (message.targetTabId !== tab.id) return;
         await ready;
         if (message.type === 'remote:show') {
+          lastError = '';
           applyState(message.state);
           await showBindings();
           await render();
+          if (state.split) root.focus();
         } else if (message.type === 'remote:action' && state.enabled) {
           await move(message.command);
         } else if (message.type === 'remote:error') {
+          lastError = message.text;
           await render();
           document.getElementById('remoteStatus').textContent = message.text;
           notify(message.text);
@@ -101,12 +110,18 @@
     });
 
     function scheduleRefresh() {
-      if (!state.enabled) return;
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => render().catch(error => notify(error.message)), 80);
+      refreshTimer = setTimeout(async () => {
+        try {
+          await ready;
+          const response = await api.runtime.sendMessage({ type: 'remote:get-state' });
+          applyState(response?.state);
+          await render();
+        } catch (error) { notify(error.message); }
+      }, 80);
     }
 
-    for (const event of [api.tabs.onCreated, api.tabs.onRemoved, api.tabs.onUpdated, api.tabs.onMoved, api.tabs.onAttached, api.tabs.onDetached]) {
+    for (const event of [api.tabs.onCreated, api.tabs.onRemoved, api.tabs.onUpdated, api.tabs.onMoved, api.tabs.onAttached, api.tabs.onDetached, api.tabs.onActivated]) {
       event.addListener(scheduleRefresh);
     }
     root.addEventListener('resize', scheduleRefresh);
