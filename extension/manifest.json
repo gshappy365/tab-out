@@ -1,13 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Tab Out",
-  "version": "1.0.0",
-  "description": "Keep tabs on your tabs. New tab page that groups your open tabs by domain and lets you close them with style.",
+  "name": "Tab Out Remote",
+  "version": "1.1.0",
+  "minimum_chrome_version": "105",
+  "description": "用遥控器切换 Chrome 标签，按网站分组选择具体标签。基于 Tab Out。",
   "permissions": ["tabs", "activeTab", "storage"],
   "chrome_url_overrides": { "newtab": "index.html" },
   "background": { "service_worker": "background.js" },
+  "commands": {
+    "show-dashboard": { "suggested_key": { "mac": "Command+Shift+Y" }, "description": "菜单：打开或刷新标签总览" },
+    "navigate-left": { "suggested_key": { "mac": "Alt+Shift+L" }, "description": "左：切换标签或移动选择" },
+    "navigate-right": { "suggested_key": { "mac": "Alt+Shift+R" }, "description": "右：切换标签或移动选择" },
+    "confirm-selection": { "suggested_key": { "mac": "Alt+Shift+E" }, "description": "确定：进入选中标签" },
+    "navigate-up": { "description": "上：向上移动选择" },
+    "navigate-down": { "description": "下：向下移动选择" },
+    "cancel-selection": { "description": "返回：回到来源标签" }
+  },
   "action": {
-    "default_title": "Tab Out",
+    "default_title": "Tab Out Remote",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"

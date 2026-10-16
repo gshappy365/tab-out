@@ -15,6 +15,10 @@
 
 'use strict';
 
+const remoteDashboard = TabOutRemoteDashboard.createRemoteDashboard({
+  api: chrome, document, render: () => renderDashboard(), notify: text => showToast(text),
+});
+
 
 /* ----------------------------------------------------------------
    CHROME TABS — Direct API Access
@@ -41,12 +45,14 @@ async function fetchOpenTabs() {
     const tabs = await chrome.tabs.query({});
     openTabs = tabs.map(t => ({
       id:       t.id,
-      url:      t.url,
+      url:      t.url || t.pendingUrl || 'about:blank',
       title:    t.title,
       windowId: t.windowId,
       active:   t.active,
+      index:    t.index,
+      favIconUrl: t.favIconUrl,
       // Flag Tab Out's own pages so we can detect duplicate new tabs
-      isTabOut: t.url === newtabUrl || t.url === 'chrome://newtab/',
+      isTabOut: (t.url || t.pendingUrl || '').split(/[?#]/)[0] === newtabUrl || t.url === 'chrome://newtab/',
     }));
   } catch {
     // chrome.tabs API unavailable (shouldn't happen in an extension page)
@@ -720,6 +726,7 @@ let domainGroups = [];
  * pages, about:blank, etc.
  */
 function getRealTabs() {
+  if (remoteDashboard.enabled) return openTabs.filter(tab => !tab.isTabOut);
   return openTabs.filter(t => {
     const url = t.url || '';
     return (
@@ -744,7 +751,7 @@ function checkTabOutDupes() {
   const countEl = document.getElementById('tabOutDupeCount');
   if (!banner) return;
 
-  if (tabOutTabs.length > 1) {
+  if (tabOutTabs.length > 1 && !remoteDashboard.enabled) {
     if (countEl) countEl.textContent = tabOutTabs.length;
     banner.style.display = 'flex';
   } else {
@@ -763,14 +770,14 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
     const count    = urlCounts[tab.url] || 1;
     const dupeTag  = count > 1 ? ` <span class="chip-dupe-badge">(${count}x)</span>` : '';
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
-    const safeUrl   = (tab.url || '').replace(/"/g, '&quot;');
-    const safeTitle = label.replace(/"/g, '&quot;');
+    const safeUrl   = escapeHtml(tab.url);
+    const safeTitle = escapeHtml(label);
     let domain = '';
     try { domain = new URL(tab.url).hostname; } catch {}
     const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
       ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
-      <span class="chip-text">${label}</span>${dupeTag}
+      <span class="chip-text">${escapeHtml(label)}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="Save for later">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
@@ -801,6 +808,7 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
  * group = { domain: string, tabs: [{ url, title, id, windowId, active }] }
  */
 function renderDomainCard(group) {
+  if (remoteDashboard.enabled) return renderRemoteDomainCard(group);
   const tabs      = group.tabs || [];
   const tabCount  = tabs.length;
   const isLanding = group.domain === '__landing-pages__';
@@ -844,14 +852,14 @@ function renderDomainCard(group) {
     const count    = urlCounts[tab.url];
     const dupeTag  = count > 1 ? ` <span class="chip-dupe-badge">(${count}x)</span>` : '';
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
-    const safeUrl   = (tab.url || '').replace(/"/g, '&quot;');
-    const safeTitle = label.replace(/"/g, '&quot;');
+    const safeUrl   = escapeHtml(tab.url);
+    const safeTitle = escapeHtml(label);
     let domain = '';
     try { domain = new URL(tab.url).hostname; } catch {}
     const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
       ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
-      <span class="chip-text">${label}</span>${dupeTag}
+      <span class="chip-text">${escapeHtml(label)}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="Save for later">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
@@ -894,6 +902,33 @@ function renderDomainCard(group) {
         <div class="mission-page-label">tabs</div>
       </div>
     </div>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+}
+
+function renderRemoteDomainCard(group) {
+  const windowIds = [...new Set(openTabs.map(tab => tab.windowId))].sort((a, b) => a - b);
+  const title = group.domain === '__landing-pages__' ? 'Homepages' : (group.label || friendlyDomain(group.domain));
+  const tabs = [...group.tabs].sort((a, b) => a.windowId - b.windowId || a.index - b.index);
+  const rows = tabs.map(tab => {
+    const label = escapeHtml(tab.title || tab.url);
+    const windowLabel = `窗口 ${windowIds.indexOf(tab.windowId) + 1}`;
+    return `<button type="button" class="page-chip remote-target" role="option" aria-selected="false" tabindex="-1"
+        data-action="focus-remote-tab" data-tab-id="${tab.id}" title="${label}">
+      <span class="chip-text">${label}</span>
+      <span class="remote-window-label">${windowLabel}</span>
+    </button>`;
+  }).join('');
+  return `<div class="mission-card domain-card has-neutral-bar">
+    <div class="status-bar"></div>
+    <div class="mission-content">
+      <div class="mission-top"><span class="mission-name">${escapeHtml(title)}</span>
+        <span class="open-tabs-badge">${tabs.length} 个标签</span></div>
+      <div class="mission-pages" role="listbox" aria-label="${escapeHtml(title)}">${rows}</div>
+    </div></div>`;
 }
 
 
@@ -1064,7 +1099,7 @@ async function renderStaticDashboard() {
   }
 
   domainGroups = [];
-  const groupMap    = {};
+  const groupMap    = Object.create(null);
   const landingTabs = [];
 
   // Custom group rules from config.local.js (if any)
@@ -1109,6 +1144,7 @@ async function renderStaticDashboard() {
       } else {
         hostname = new URL(tab.url).hostname;
       }
+      if (!hostname && remoteDashboard.enabled) hostname = 'browser-pages';
       if (!hostname) continue;
 
       if (!groupMap[hostname]) groupMap[hostname] = { domain: hostname, tabs: [] };
@@ -1150,7 +1186,9 @@ async function renderStaticDashboard() {
 
   if (domainGroups.length > 0 && openTabsSection) {
     if (openTabsSectionTitle) openTabsSectionTitle.textContent = 'Open tabs';
-    openTabsSectionCount.innerHTML = `${domainGroups.length} domain${domainGroups.length !== 1 ? 's' : ''} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} Close all ${realTabs.length} tabs</button>`;
+    openTabsSectionCount.innerHTML = remoteDashboard.enabled
+      ? `${domainGroups.length} 个网站 · ${realTabs.length} 个标签`
+      : `${domainGroups.length} domain${domainGroups.length !== 1 ? 's' : ''} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} Close all ${realTabs.length} tabs</button>`;
     openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g)).join('');
     openTabsSection.style.display = 'block';
   } else if (openTabsSection) {
@@ -1168,8 +1206,14 @@ async function renderStaticDashboard() {
   await renderDeferredColumn();
 }
 
-async function renderDashboard() {
-  await renderStaticDashboard();
+let dashboardRenderQueue = Promise.resolve();
+function renderDashboard() {
+  const result = dashboardRenderQueue.then(async () => {
+    await renderStaticDashboard();
+    await remoteDashboard.reconcile();
+  });
+  dashboardRenderQueue = result.catch(() => {});
+  return result;
 }
 
 
@@ -1187,6 +1231,15 @@ document.addEventListener('click', async (e) => {
   if (!actionEl) return;
 
   const action = actionEl.dataset.action;
+
+  if (action === 'open-remote-shortcuts') {
+    await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    return;
+  }
+  if (action === 'focus-remote-tab') {
+    await remoteDashboard.activate(Number(actionEl.dataset.tabId));
+    return;
+  }
 
   // ---- Close duplicate Tab Out tabs ----
   if (action === 'close-tabout-dupes') {
@@ -1479,4 +1532,4 @@ document.addEventListener('input', async (e) => {
 /* ----------------------------------------------------------------
    INITIALIZE
    ---------------------------------------------------------------- */
-renderDashboard();
+remoteDashboard.start().catch(error => showToast(error.message));

@@ -26,7 +26,15 @@
       <!-- "Friday, April 4, 2026" — written by getDateDisplay() in app.js -->
       <div class="date" id="dateDisplay"></div>
     </div>
+    <button class="action-btn" data-action="open-remote-shortcuts">遥控器快捷键</button>
   </header>
+
+  <section id="remoteHelp" class="remote-help" aria-label="遥控导航" hidden>
+    <strong>遥控导航</strong>
+    <span id="remoteStatus" role="status" aria-live="polite"></span>
+    <small id="remoteBindings"></small>
+    <button class="action-btn" data-action="open-remote-shortcuts">配置快捷键</button>
+  </section>
 
   <!-- ================================================================
        TAB OUT DUPES BANNER — appears when you have extra Tab Out tabs open
@@ -130,6 +138,8 @@
 <script src="config.local.js" onerror="/* no personal config, that's fine */"></script>
 
 <!-- Main dashboard logic — loads last so the DOM is ready -->
+<script src="spatial-navigation.js"></script>
+<script src="remote-dashboard.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

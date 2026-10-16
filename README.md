@@ -2,6 +2,12 @@
 
 **Keep tabs on your tabs.**
 
+## 本地遥控版：Tab Out Remote
+
+本目录增加了 SayAll 快捷键协作：菜单呼出总览，左右切换当前窗口标签，总览按屏幕方向选择真实标签并跨窗口激活。SayAll 使用已有按 App 方案配置；扩展声明七个命令，四个提供默认建议绑定。
+
+安装、快捷键与实机验收见 [REMOTE_SETUP.md](REMOTE_SETUP.md)。原版网站分组和鼠标模式保留；遥控模式展开所有标签并独立展示重复网址实例。来源与许可见 [UPSTREAM.md](UPSTREAM.md)。
+
 Tab Out is a Chrome extension that replaces your new tab page with a dashboard of everything you have open. Tabs are grouped by domain, with homepages (Gmail, X, LinkedIn, etc.) pulled into their own group. Close tabs with a satisfying swoosh + confetti.
 
 No server. No account. No external API calls. Just a Chrome extension.

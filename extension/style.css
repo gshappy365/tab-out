@@ -460,6 +460,45 @@ header {
   background: rgba(200, 113, 58, 0.04);
 }
 
+.remote-help {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--accent-green, #3d7a4a);
+  border-radius: 14px;
+  background: #f1f7ef;
+}
+.remote-help[hidden] { display: none; }
+.remote-mode #openTabsMissions .mission-card,
+.remote-mode .active-section .section-header,
+.remote-mode footer { animation: none; }
+.remote-help small { color: var(--muted); flex-basis: 100%; }
+.remote-mode .remote-target {
+  font: inherit;
+  font-size: 15px;
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+}
+.remote-mode .remote-selected {
+  outline: 3px solid #3d7a4a;
+  outline-offset: 1px;
+  background: #eaf4e5;
+}
+.remote-window-label {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 /* "+N more" overflow chip */
 .page-chip-overflow {
   font-size: 12px;

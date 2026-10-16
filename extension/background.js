@@ -1,17 +1,20 @@
-/**
- * background.js — Service Worker for Badge Updates
- *
- * Chrome's "always-on" background script for Tab Out.
- * Its only job: keep the toolbar badge showing the current open tab count.
- *
- * Since we no longer have a server, we query chrome.tabs directly.
- * The badge counts real web tabs (skipping chrome:// and extension pages).
- *
- * Color coding gives a quick at-a-glance health signal:
- *   Green  (#3d7a4a) → 1–10 tabs  (focused, manageable)
- *   Amber  (#b8892e) → 11–20 tabs (getting busy)
- *   Red    (#b35a5a) → 21+ tabs   (time to cull!)
- */
+importScripts('remote-background.js');
+
+const remoteController = TabOutRemoteBackground.createRemoteController(chrome);
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  remoteController.handleCommand(command, tab).catch(error => {
+    console.warn('[tab-out] Remote command failed:', error.message);
+  });
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!['remote:get-state', 'remote:selection', 'remote:execute'].includes(message?.type)) return false;
+  remoteController.handleMessage(message, sender).then(sendResponse).catch(error => {
+    sendResponse({ ok: false, error: error.message });
+  });
+  return true;
+});
 
 // ─── Badge updater ────────────────────────────────────────────────────────────
 
