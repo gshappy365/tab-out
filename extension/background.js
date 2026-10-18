@@ -1,4 +1,4 @@
-importScripts('split-navigation.js', 'muse-focus.js', 'remote-background.js');
+importScripts('split-navigation.js', 'muse-focus.js', 'native-ratio.js', 'remote-background.js');
 
 const remoteController = TabOutRemoteBackground.createRemoteController(chrome);
 

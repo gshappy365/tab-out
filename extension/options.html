@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="zh-CN">
 <meta charset="utf-8">
-<title>Tab Out Remote · 输入焦点设置</title>
+<title>Tab Out Remote · 浏览器辅助设置</title>
 <style>
 body { max-width: 680px; margin: 60px auto; padding: 24px; font: 17px/1.7 system-ui; color: #243a2a; background: #faf9f5; }
 button { padding: 10px 18px; margin-right: 12px; font: inherit; cursor: pointer; }
 small { display: block; margin-top: 20px; }
 </style>
-<h1>输入焦点设置</h1>
+<h1>浏览器辅助设置</h1>
 <h2>Muse 消息框自动聚焦</h2>
 <p>从分屏总览选择或返回 Muse 时，自动聚焦消息输入框。保留已有草稿和选区，不写入或发送消息。</p>
 <p>只申请 <strong>https://muse.ai/*</strong> 的可选访问权限。你可以随时关闭。</p>
@@ -15,5 +15,13 @@ small { display: block; margin-top: 20px; }
 <button id="enable">为 Muse 开启自动聚焦</button>
 <button id="disable" hidden>关闭 Muse 自动聚焦并撤销授权</button>
 <small>其他网站沿用浏览器自身保留的输入焦点；此设置不改变遥控器按键绑定。</small>
+<h2>macOS 分屏比例保持</h2>
+<p>每个窗口仍只有一个总览。已有分屏中选择或返回标签后，辅助程序把你切换前拖好的总览宽度按原比例恢复（总览 20%–60%），再恢复浏览侧输入焦点。</p>
+<p>需要单独安装 macOS 辅助程序，并在系统设置中为它授予辅助功能权限。辅助程序只调整当前 Chrome 分屏；不会读取输入内容。</p>
+<p id="ratio-status" role="status" aria-live="polite">正在检查分屏设置…</p>
+<button id="ratio-enable">开启比例保持</button>
+<button id="ratio-disable" hidden>关闭比例保持并撤销连接权限</button>
+<button id="ratio-check">检查辅助程序</button>
+<script src="native-ratio.js"></script>
 <script src="options.js"></script>
 </html>
