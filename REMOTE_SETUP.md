@@ -99,6 +99,23 @@ node --test tests/browser-split-navigation.test.cjs
 
 分屏测试要求 Chrome 155+，可用 `TAB_OUT_CHROME_PATH` 指定 Chrome for Testing 可执行文件。默认 Playwright Chromium 可能版本较旧；测试遇到不支持的版本会失败并提示，不将跳过视为分屏验收通过。设置 `TAB_OUT_HEADFUL=1` 可运行有界面分屏测试。
 
+## macOS 分屏比例保持（当前本地构建）
+
+需要 Chrome 155+ 与 macOS。默认关闭；开启后，选择或返回分屏标签会恢复你切换前拖好的总览宽度（总览占比 20%–60%）；首次新组合仍是 Chrome 默认均分，重启浏览器后回到均分。
+
+本地安装（2026-10-18 已完成，日常 Chrome 扩展目录与用户级 host 注册）：
+
+1. 更新扩展文件：把工作区 `work/publish-tab-out/extension` 复制到日常加载目录 `outputs/tab-out-remote/extension`，保留原 `config.local.js`。备份在 `work/daily-extension-backup-2026-10-18`。
+2. 注册 native host（用户级，仅允许本扩展）：
+   `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.tab_out_remote.split_ratio.json`，`path` 指向 `~/Library/Application Support/TabOutRemote/tab-out-split-ratio`（不可放在 `~/Documents` 下，否则会触发文稿文件夹权限弹窗），`allowed_origins` 为 `chrome-extension://mjjmcnehccceafealejhjjllgcdohlef/`。
+3. 在 `chrome://extensions` 重新加载 Tab Out Remote，刷新已打开的总览。
+4. 打开“输入焦点设置” → “macOS 分屏比例保持” → 点击“开启比例保持”，在 Chrome 提示中允许 `nativeMessaging`。状态应显示“已开启”。
+5. 系统设置 → 隐私与安全性 → 辅助功能中，`tab-out-split-ratio`（Application Support 路径）必须为 on。该 helper 是 ad-hoc 签名；重新构建后 CDHash 变化会导致旧记录失效，需用新文件名重新添加（不要删 TCC 数据库或重置其他授权）。Chrome 自动更新后可能从 `code_sign_clone` 路径运行主进程，helper 已兼容该布局。
+
+使用：在已有分屏中拖动分隔条到你想要的宽度，之后用总览点击/确定/返回都会保持这个比例。关闭开关或撤销 `nativeMessaging` 权限后恢复原有行为。
+
+回滚：恢复 `work/daily-extension-backup-2026-10-18` 到扩展目录，删除用户级 `com.tab_out_remote.split_ratio.json`，在 `chrome://extensions` 重新加载。
+
 ## Muse 消息框专项适配（当前本地构建）
 
 Muse 失去原输入框焦点后，浏览器自身不一定能恢复消息框。当前本地构建增加可选的 Muse 自动聚焦：
