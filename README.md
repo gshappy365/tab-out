@@ -12,6 +12,8 @@
 
 1.2.0 增加 Chrome 原生分屏选择：总览已处于分屏时，点击或确定会把真实目标标签放到另一侧，总览保持原侧；返回恢复本次首次选择前的浏览侧。支持跨窗口移动、解除目标已有分屏，以及固定状态和标签组冲突保护。分屏重组需要 Chrome 155+，未分屏时保持原有行为。
 
+当前本地分支另有 macOS 分屏比例保持接入，默认关闭。开启后，已有分屏中选择或返回标签时，独立辅助程序恢复你切换前拖好的总览宽度（总览占比 20%–60%，首次组合保持均分），随后恢复浏览侧输入焦点；每窗口复用一个总览。需要单独注册辅助程序、授予本地连接与 macOS 辅助功能权限。辅助程序失败时保留已完成的标签切换并提示。当前仅进行隔离验证，尚未部署到日常 Chrome；构建与隔离注册见 [辅助程序说明](native/macos/README.md)，实现边界与验收目标见 [接入设计](docs/features/native-split-ratio-design.md)，真实 Chrome 本地验收记录见 [验收记录](docs/features/native-split-ratio-verification.md)。
+
 Tab Out is a Chrome extension that replaces your new tab page with a dashboard of everything you have open. Tabs are grouped by domain, with homepages (Gmail, X, LinkedIn, etc.) pulled into their own group. Close tabs with a satisfying swoosh + confetti.
 
 No server. No account. No external API calls. Just a Chrome extension.

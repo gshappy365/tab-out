@@ -44,16 +44,59 @@ const { chromium } = require(process.env.TAB_OUT_PLAYWRIGHT_PATH || 'playwright'
       const widths = await Promise.all([dashboard, a, b].map(page => page.evaluate(() => innerWidth)));
       const d = tabs[0], partnerIndex = tabs.findIndex((t, i) => i > 0 && t.splitViewId === d.splitViewId);
       const ratio = d.splitViewId >= 0 && partnerIndex > 0 ? widths[0] / (widths[0] + widths[partnerIndex]) : null;
-      console.log(JSON.stringify({ widths, dashboardFraction: ratio, tabs: tabs.map(t => ({ id: t.id, index: t.index, splitViewId: t.splitViewId, width: t.width })) }));
+      const result = { widths, dashboardFraction: ratio, tabs: tabs.map(t => ({ id: t.id, index: t.index, splitViewId: t.splitViewId, width: t.width })) };
+      console.log(JSON.stringify(result));
+      return result;
+    };
+    const select = async targetId => {
+      await dashboard.locator(`.remote-target[data-tab-id="${targetId}"]`).click();
+      await dashboard.evaluate(() => chrome.runtime.sendMessage({ type: 'remote:get-state' }));
+      // Browser layout can finish after the extension command resolves.
+      const partner = targetId === ids.a ? a : b;
+      await partner.waitForFunction(() => innerWidth < outerWidth - 100);
+    };
+    const preservePair = async () => {
+      // A test-only alternative: keep D/A intact and give B its own overview.
+      // Creates no duplicate browsing page, and does not change production routing.
+      await worker.evaluate(async ids => {
+        const d = await chrome.tabs.get(ids.dashboard);
+        const second = await chrome.tabs.create({ windowId: d.windowId, url: d.url, active: false });
+        await chrome.tabs.move(ids.b, { windowId: d.windowId, index: second.index + 1 });
+        await chrome.tabs.createSplit([second.id, ids.b]);
+        await chrome.tabs.update(ids.b, { active: true });
+      }, ids);
+      await b.waitForFunction(() => innerWidth < outerWidth - 100);
+      await worker.evaluate(async ids => { await chrome.tabs.update(ids.a, { active: true }); }, ids);
+      await a.waitForFunction(() => innerWidth < outerWidth - 100);
+      return measure();
     };
     // All commands operate exclusively on the three tabs created in this profile.
-    console.log('READY: drag the native separator, then enter measure; A/B select a real tab; return restores the initial partner; move-between probes tabs.move; api probes schema; quit cleans up.');
+    console.log('READY: drag the native separator, then enter measure; compare tests keeping a separate overview/B pair before the normal destructive roundtrip; roundtrip asserts A → B → A retains a non-default ratio; A/B select a real tab; return restores the initial partner; move-between probes tabs.move; api probes schema; quit cleans up.');
     for await (const input of readline.createInterface({ input: process.stdin })) {
       const command = input.trim();
       if (command === 'quit') break;
+      if (['roundtrip', 'compare'].includes(command)) {
+        const before = await measure();
+        if (before.tabs[0].splitViewId < 0 || before.tabs[0].splitViewId !== before.tabs[1].splitViewId || Math.abs(before.dashboardFraction - 0.5) < 0.08) {
+          console.log('PRECONDITION: pair the overview with A and manually resize clearly away from 50:50; no ratio verdict has been made.');
+          continue;
+        }
+        if (command === 'compare') {
+          const preserved = await preservePair();
+          const sameSplit = preserved.tabs[0].splitViewId === before.tabs[0].splitViewId;
+          console.log(JSON.stringify({ test: 'keep-original-pair', verdict: sameSplit && Math.abs(before.dashboardFraction - preserved.dashboardFraction) <= 0.02 ? 'PASS' : 'FAIL', sameSplit, before: before.dashboardFraction, returned: preserved.dashboardFraction }));
+        }
+        await select(ids.b);
+        const switched = await measure();
+        await select(ids.a);
+        const returned = await measure();
+        const difference = Math.abs(before.dashboardFraction - returned.dashboardFraction);
+        console.log(JSON.stringify({ test: 'same-real-tab-ratio-roundtrip', verdict: difference <= 0.02 ? 'PASS' : 'FAIL', before: before.dashboardFraction, switched: switched.dashboardFraction, returned: returned.dashboardFraction, tolerance: 0.02 }));
+        if (difference > 0.02) process.exitCode = 1;
+        continue;
+      }
       if (['A', 'B'].includes(command)) {
-        await dashboard.locator(`.remote-target[data-tab-id="${ids[command.toLowerCase()]}"]`).click();
-        await dashboard.evaluate(() => chrome.runtime.sendMessage({ type: 'remote:get-state' }));
+        await select(ids[command.toLowerCase()]);
       } else if (command === 'return') {
         await dashboard.evaluate(() => chrome.runtime.sendMessage({ type: 'remote:execute', command: 'cancel-selection' }));
       } else if (command === 'move-between') {
