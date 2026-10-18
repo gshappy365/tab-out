@@ -47,6 +47,7 @@ test('真实扩展：标签展示、导航、确定、返回与快捷键', async
     await dashboard.waitForURL(`chrome-extension://${extensionId}/index.html?remote=1`);
     await dashboard.waitForSelector('.remote-target', { timeout: 10000 });
     assert.equal(await dashboard.locator('.remote-target').count(), 12);
+    await dashboard.locator(`.remote-selected[data-tab-id="${sourceTab.id}"]`).waitFor({ state: 'attached', timeout: 10000 });
     assert.equal(await dashboard.locator(`.remote-selected[data-tab-id="${sourceTab.id}"]`).count(), 1);
     assert.equal(await dashboard.locator('.remote-window-label').count(), 12);
     assert.equal(await dashboard.locator('.mission-card').first().evaluate(element => getComputedStyle(element).opacity), '1');
