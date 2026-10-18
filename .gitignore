@@ -6,3 +6,7 @@ docs/superpowers/
 
 # Personal config (landing page patterns, etc.) — never push to GitHub
 extension/config.local.js
+
+# Generated macOS native helper binaries and bundles
+native/macos/build/
+native/macos/__pycache__/

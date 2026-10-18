@@ -2,6 +2,10 @@
   'use strict';
 
   function createRemoteController(api) {
+    const nativeRatio = (root.TabOutNativeRatio || require('./native-ratio.js')).createNativeRatio(api, {
+      // Shorter settle check after the native drag; widths are already stable within a frame.
+      wait: ms => new Promise(resolve => setTimeout(resolve, Math.min(ms, 60))),
+    });
     const muse = (root.TabOutMuseFocus || require('./muse-focus.js')).createMuseFocus(api);
     const split = (root.TabOutSplit || require('./split-navigation.js')).createSplitNavigator(api);
     const dashboardUrl = api.runtime.getURL('index.html');
@@ -134,6 +138,25 @@
       }
     }
 
+    // The overview width the user chose by dragging. Captured before the split is rebuilt,
+    // because rebuilding always resets Chrome's split view to 50:50.
+    async function measureRatio(dashboardId) {
+      const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+      try {
+        const context = await split.inspect(dashboardId);
+        if (!context) return null;
+        const [dashboard, partner] = await Promise.all([api.tabs.get(dashboardId), api.tabs.get(context.partner.id)]);
+        if (dashboard.width > 0 && partner.width > 0) return dashboard.width / (dashboard.width + partner.width);
+        // One retry only when the width read looks transient.
+        await wait(50);
+        const [second, secondPartner] = await Promise.all([api.tabs.get(dashboardId), api.tabs.get(context.partner.id)]);
+        if (!(second.width > 0) || !(secondPartner.width > 0)) return null;
+        return second.width / (second.width + secondPartner.width);
+      } catch {
+        return null;
+      }
+    }
+
     async function finishSelection(state, tabId, missingMessage) {
       let target;
       try {
@@ -143,12 +166,13 @@
         await sendToDashboard(state, 'remote:error', { text: missingMessage });
         return;
       }
+      const targetRatio = await measureRatio(state.dashboardTabId);
       try {
         const result = await split.select(state.dashboardTabId, target.id);
         if (result.handled) {
           const next = await dashboardState(await api.tabs.get(state.dashboardTabId));
           await sendToDashboard(next, 'remote:show', { state: next, focusDashboard: false });
-          return restoreMuseInput(next, target.id);
+          return finishSplitFocus(next, target.id, targetRatio);
         }
         await api.tabs.update(target.id, { active: true });
         await api.windows.update(target.windowId, { focused: true });
@@ -161,6 +185,15 @@
       try {
         await api.runtime.sendMessage({ type: 'remote:end', targetTabId: state.dashboardTabId });
       } catch { /* The target was activated even if its old dashboard closed. */ }
+    }
+
+    async function finishSplitFocus(state, tabId, targetRatio) {
+      const result = await nativeRatio.apply(state.dashboardTabId, tabId, targetRatio);
+      if (['permission-required', 'refused', 'error'].includes(result.status)) {
+        try { await sendToDashboard(state, 'remote:error', { text: '标签已切换，但未能恢复原分屏比例。请检查辅助程序、辅助功能授权及当前窗口。' }); }
+        catch {}
+      }
+      return restoreMuseInput(state, tabId);
     }
 
     async function restoreMuseInput(state, tabId) {
@@ -191,13 +224,14 @@
           return finishSelection(state, state.selectedTabId, '选中标签已关闭，请重新选择。');
         }
         if (command === 'cancel-selection') {
+          const targetRatio = await measureRatio(dashboard.id);
           try {
             const result = await split.cancel(dashboard.id);
             if (result.handled) {
               const next = await dashboardState(await api.tabs.get(dashboard.id));
               await sendToDashboard(next, 'remote:show', { state: next, focusDashboard: false });
               const context = await split.inspect(dashboard.id);
-              if (context) await restoreMuseInput(next, context.partner.id);
+              if (context) await finishSplitFocus(next, context.partner.id, targetRatio);
               return;
             }
           } catch (error) {
